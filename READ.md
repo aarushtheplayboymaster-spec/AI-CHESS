@@ -16,21 +16,26 @@ MCTS.py #it usesg the intution and values from AI to use them in its simulation 
 MAIN.py #run everything and does navigation 
 
 
-2) neural network(usesg supervised learning,pytorch)
+2) neural network(usage supervised learning,pytorch)
 
+strcture:-
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+chess_net(input----one conv layer---->output)
+          |
+          |
+          |
+          |
+|----------------------|
+|    there are 5       |
+|      blocks of       |
+|    residula network  |
+|      which gives     |
+|    output for policy |
+|       and value      |
+|----------------------|
+          /\
+         /  \
+        /    \
+       /      \
+    policy    value
+    head      head
