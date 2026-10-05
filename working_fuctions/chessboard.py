@@ -1,45 +1,30 @@
 import chess
-import pygame
-import random
-class chessGUI:
+class chessmoves:
     def __init__(self):
         self.board = chess.Board()
-    def chess_legal_moves(self,player):
-        self.board.push_san(player)
-        legal_moves = [self.board.san(move) for move in self.board.legal_moves]   
-        return legal_moves
-    def chessmoves(self):
-        player = str(input("enter your legal move: "))
-        move = self.chess_legal_moves(player)
-        print(move)
-        AI = str(random.choice(move))
-        move = self.chess_legal_moves(AI)
-        print(move)
-    def chessGUI(self):
-        pygame.init()
-        screen = pygame.display.set_mode((1000, 600))
-        clock = pygame.time.Clock()
-        my_image = pygame.image.load("starting_board.svg").convert_alpha()
-        running = True
-
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-
-            screen.fill((0, 0, 0))
-            screen.blit(my_image,(10,60))
-            pygame.display.flip()
-            clock.tick(60)
-
-        pygame.quit()
-
-game = chessGUI()
-game.chessGUI()
-
-
-
-        
-       
-
-
+    def chess_legal_moves(self,input):
+        move = chess.Move.from_uci(input)
+        if move in self.board.legal_moves:
+            self.board.push(move)
+            return move
+        return None
+    def simulate_move(self):
+        pass
+    def is_terminal(self):
+        is_terminal = self.board.is_game_over()
+        return is_terminal
+    def winning(self):
+        is_game_over = self.is_terminal()
+        if is_game_over == True:
+            outcome = self.board.outcome()
+            if outcome.winner == chess.WHITE:
+                return 1
+            elif outcome.winner == chess.BLACK:
+                return -1
+            else:
+                return 0
+    def to_tensor(self):
+        pass
+if __name__ == "__main__":
+    test_board = chessmoves()
+    print("Board initialized successfully!")
