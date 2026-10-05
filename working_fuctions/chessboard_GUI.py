@@ -75,6 +75,7 @@ class CHESSGUI:
         pygame.display.set_caption("JUST_PLAY")
         clock = pygame.time.Clock()
         running = True
+        player_context = pygame.Surface((50,50))
 
         my_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-03 191504.png").convert_alpha()
         highlighting = pygame.image.load("AI-CHESS/assates/RedX_(3).png").convert_alpha()
@@ -105,12 +106,13 @@ class CHESSGUI:
 
 
             screen.fill((0, 0, 0))
+            player_context.fill((0,0,255))
             t_my_board = pygame.transform.scale(my_board,(640,640))
 
 
 
             screen.blit(t_my_board,(0,0))
-
+            screen.blit(player_context,(40,100))
             for square in range(64):
                 piece = self.legal.board.piece_at(square)
                 if piece is not None:
