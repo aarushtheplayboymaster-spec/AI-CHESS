@@ -87,17 +87,3 @@ for loop in range(10000):#run the network 10000 times
 
         total_loss.backward() #the simplay process of backpropogation the optimizer
         optimizer.step()
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
