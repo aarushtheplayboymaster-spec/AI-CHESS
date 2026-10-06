@@ -1,6 +1,8 @@
 import chess
 import pygame
 from chessboard import chessmoves
+import pygame_widgets
+from pygame_widgets.button import Button 
 class CHESSGUI:
     def __init__(self):
         self.board = chess.Board()
@@ -49,7 +51,7 @@ class CHESSGUI:
             if piece is not None:
                 self.selected = checked_square
             else:
-                print("there is no piece stupid")
+                pass
         else:
             fro_squre = chess.square_name(self.selected)
             to_squre = chess.square_name(checked_square)
@@ -68,6 +70,9 @@ class CHESSGUI:
                 get_uni_move = fro_squre + to_squre
                 self.legal.chess_legal_moves(get_uni_move)
                 self.turn = True
+    def sittings(self):
+        print("sittings")
+
     def chessgui(self):
 
         pygame.init()
@@ -77,6 +82,20 @@ class CHESSGUI:
         running = True
         player_context = pygame.Surface((230,50))
 
+
+        sittings_icon = pygame.image.load("AI-CHESS/assates/VirtualBox_6.1_–_vm_settings_16px_x4.png").convert_alpha()
+        pygame.transform.scale(sittings_icon,(10,10))
+        
+        button = Button(
+            screen, 900, 10, 30, 30, 
+            text='',
+            image=sittings_icon,
+            inactiveColour=(0, 0, 0),  
+            hoverColour=(125, 125, 125),     
+            pressedColour=(0, 200, 20),     
+            radius=25,                      
+            onClick= self.sittings
+            )
         my_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-03 191504.png").convert_alpha()
         highlighting = pygame.image.load("AI-CHESS/assates/RedX_(3).png").convert_alpha()
         piece_image = {
@@ -94,13 +113,19 @@ class CHESSGUI:
         "q":pygame.image.load("AI-CHESS/assates/Chess_qdt60.png").convert_alpha()
       
         }
+        #this is the game loop 
+        events = pygame.event.get()
         while running:
+            game_over = self.legal.is_terminal()
+            if game_over is True:
+                running = False
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mx, my = event.pos
-                    self.handal_checkes(mx,my)
+                    if mx < 640 and my < 640:
+                        self.handal_checkes(mx,my)
 
 
 
@@ -131,13 +156,7 @@ class CHESSGUI:
                             pygame.transform.scale(highlighting,self.pieces_size)
                             screen.blit(highlighting, (x, y))
 
-
-
-
-
-
-
-
+            pygame_widgets.update(events) 
             pygame.display.flip()
             clock.tick(60)
 
