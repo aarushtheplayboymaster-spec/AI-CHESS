@@ -19,8 +19,10 @@ class CHESSGUI:
         self.show_sittings = False
         self.flip_board = False
         self.running = True
+        self.pawn_promotion = False
+        self.pending_move = None
         self.screen = pygame.display.set_mode((self.borad_size))
-        self.check_botton()
+        self.flip_botton()
 
 
         self.piece_image = {
@@ -86,9 +88,10 @@ class CHESSGUI:
     
     def handal_checkes(self,mx,my):# this gets the screen coordinates when we right check on the screen 
         if self.flip_board == False:
+        
             checked_square = self.white_move_from(mx,my) # then sends the coods to move_from() to get the bitboard pos
             if self.selected is None: # it sees if there is a selected square or not if there isn't any it moves forward
-                piece = self.legal.board.piece_at(checked_square)#it checks if there is any piece there or not
+                piece = self.legal.board.piece_at(checked_square) #it checks if there is any piece there or not
                 if piece is not None:
                     self.selected = checked_square #makes that so that the  check we did on a piece gets selected to move 
                 else:# does nothing if there is no piece when we check
@@ -97,12 +100,19 @@ class CHESSGUI:
                 #get the chess name of both squres e.g(e2e4)
                 fro_squre = chess.square_name(self.selected)
                 to_squre = chess.square_name(checked_square)
-
                 if fro_squre != to_squre:
-                    get_uni_move = fro_squre + to_squre # combines them to send them to (self.legal.chess_legal_moves(get_uni_move)) fuction which moves that piece 
-                    self.legal.chess_legal_moves(get_uni_move)
+                    pieces = self.legal.board.piece_at(self.selected)
+                    if pieces and pieces.piece_type == chess.PAWN:
+                        target_rank = chess.square_rank(checked_square)
+                        if (pieces.color == chess.WHITE and target_rank == 7) or (pieces.color == chess.BLACK and target_rank == 0):
+                            self.pawn_promotion = True
 
-                    self.selected = None #resets the value for next piece move
+                    if self.pawn_promotion == True:
+                        self.pending_move = fro_squre + to_squre # combines them to send them to (self.legal.chess_legal_moves(get_uni_move)) fuction which moves that piece 
+                    else:
+                        get_uni_move = fro_squre + to_squre 
+                        self.legal.chess_legal_moves(get_uni_move)
+                self.selected = None #resets the value for next piece move
             
         elif self.flip_board == True:
             checked_square = self.black_move_from(mx,my)
@@ -153,36 +163,15 @@ class CHESSGUI:
                 get_uni_move = fro_squre + to_squre
                 self.legal.chess_legal_moves(get_uni_move)
                 self.turn = True
-
-    def check_botton(self):
-        #sitting_start_button = Button(
-        #    self.screen, 900, 10, 30, 30, 
-        #    text='',
-        #    image=self.sittings_icon,
-        #    inactiveColour=(0, 0, 0),  
-        #    hoverColour=(125, 125, 125),     
-        #    pressedColour=(0, 200, 20),     
-        #    radius=25,                      
-        #    onClick= self.show_sittings
-        #    )
-        #sitting_close_button = Button(
-        #    self.screen, 900, 10, 30, 30, 
-        #    text='',
-        #    image=self.sittings_icon,
-        #    inactiveColour=(0, 0, 0),  
-        #    hoverColour=(125, 125, 125),     
-        #    pressedColour=(0, 200, 20),     
-        #    radius=25,                      
-        #    onClick= self.show_sittings
-        #)
+    def flip_botton(self):
         self.filp_the_board = Button(
             self.screen, 670, 10, 30, 30, 
             text='',
-            image=pygame.image.load("AI-CHESS/assates/VirtualBox_6.1_–_vm_settings_16px_x4.png").convert_alpha(),
+            image=pygame.image.load('AI-CHESS/assates/Farm-Fresh_transform_flip.png').convert_alpha(),
             inactiveColour=(0, 0, 0),  
             hoverColour=(125, 125, 125),     
             pressedColour=(0, 200, 20),     
-            radius=25,                      
+            radius=25,
             onClick= self.fliping_board
         )
     def fliping_board(self):
@@ -191,9 +180,69 @@ class CHESSGUI:
 
     def showing_sittings(self):
         self.show_sittings = not self.show_sittings
+    def promote_queen(self,the_piece_type):
+        if the_piece_type != 'c':
+            self.legal.chess_legal_moves(self.pending_move + the_piece_type)
+        self.pawn_promotion = False
+        self.pending_move = None
+        self.Queen_promotion.hide()
+        self.Knight_promotion.hide()
+        self.Bishop_promotion.hide()
+        self.Rook_promotion.hide()
+        self.close_buttons.hide()
         
-    def sitting_drawing(self):
-        pass
+    def queen_promotion_botton(self,mx,my):
+        self.Queen_promotion = Button(
+            self.screen, mx, (my), 60, 60, 
+            text='',
+            image=self.piece_image['Q'],
+            inactiveColour=(0, 0, 0),  
+            hoverColour=(125, 125, 125),     
+            pressedColour=(0, 200, 20),     
+            radius=0,                      
+            onClick= lambda : self.promote_queen(the_piece_type = 'q')
+        )
+        self.Knight_promotion = Button(
+            self.screen, mx, (my+60), 60, 60, 
+            text='',
+            image=self.piece_image['N'],
+            inactiveColour=(0, 0, 0),  
+            hoverColour=(125, 125, 125),     
+            pressedColour=(0, 200, 20),     
+            radius=0,                      
+            onClick= lambda : self.promote_queen(the_piece_type = 'n')
+        )
+        self.Bishop_promotion = Button(
+            self.screen, mx, (my+60*2), 60, 60, 
+            text='',
+            image=self.piece_image['B'],
+            inactiveColour=(0, 0, 0),  
+            hoverColour=(125, 125, 125),     
+            pressedColour=(0, 200, 20),     
+            radius=0,                      
+            onClick= lambda : self.promote_queen(the_piece_type = 'b')
+        )
+        self.Rook_promotion = Button(
+            self.screen, mx, (my+60*3), 60, 60, 
+            text='',
+            image=self.piece_image['R'],
+            inactiveColour=(0, 0, 0),  
+            hoverColour=(125, 125, 125),     
+            pressedColour=(0, 200, 20),     
+            radius=0,                      
+            onClick= lambda : self.promote_queen(the_piece_type = 'r')
+        )
+        self.close_buttons = Button(
+            self.screen, mx, (my+60*4), 60, 40, 
+            text='',
+            image=self.highlighting,
+            inactiveColour=(0, 0, 0),  
+            hoverColour=(125, 125, 125),     
+            pressedColour=(0, 200, 20),     
+            radius=0,                      
+            onClick=  lambda : self.promote_queen(the_piece_type = 'c')
+        )
+        
         
     def chessgui(self):# this is where the chess GUI starts
         while self.running:
@@ -208,8 +257,15 @@ class CHESSGUI:
 
                 if event.type == pygame.MOUSEBUTTONDOWN:#check on the screen
                     mx, my = event.pos #gets the screen coods
-                    if mx < 640 and my < 640: #sees of the check was inside of the board 
-                        self.handal_checkes(mx,my)#give the coods to handal_checkes() to move a piece
+                    if self.pawn_promotion and self.pending_move is not None:
+                        pass
+                    else:
+                        if mx < 640 and my < 640: #sees of the check was inside of the board 
+                            self.handal_checkes(mx,my)#give the coods to handal_checkes() to move a piece 
+                            if self.pawn_promotion == True and self.pending_move is not None:
+                                self.queen_promotion_botton(mx,my)
+                                
+                              
 
             #this fills the windows background
             self.screen.fill((0, 0, 0))
@@ -258,7 +314,7 @@ class CHESSGUI:
                                 x, y = self.black_highlight(target_square)
                                 pygame.transform.scale(self.highlighting,self.pieces_size)
                                 self.screen.blit(self.highlighting, (x, y))
-            
+
 
             pygame_widgets.update(event) 
             pygame.display.flip()
