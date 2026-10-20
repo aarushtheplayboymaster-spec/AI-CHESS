@@ -6,8 +6,16 @@ class chessmoves:
         move = chess.Move.from_uci(input)
         if move in self.board.legal_moves:
             self.board.push(move)
+            self.board.move_stack
             return move
         return None
+    def temp_san_board(self):
+        temp_board = chess.Board()
+        san_moves = []
+        for move in self.board.move_stack:
+            san_moves.append(temp_board.san(move))
+            temp_board.push(move)
+        return san_moves
     def simulate_move(self):
         pass
     def is_terminal(self):

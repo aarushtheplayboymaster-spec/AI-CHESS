@@ -4,11 +4,13 @@ from chessboard import chessmoves
 import pygame_widgets
 from pygame_widgets.button import Button 
 from pygame_widgets.dropdown import Dropdown
+from pygame_widgets.textbox import TextBox
 import time
 class CHESSGUI:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("JUST_PLAY")
+        
         self.clock = pygame.time.Clock()
         self.board = chess.Board()
         self.pieces_size = 70,70
@@ -16,6 +18,7 @@ class CHESSGUI:
         self.square_size = 80
         self.offset = 5
         self.legal = chessmoves()
+      
         self.selected = None
         self.turn = True
         self.show_sittings = False
@@ -24,13 +27,19 @@ class CHESSGUI:
         self.pawn_promotion = False
         self.pending_move = None
         self.screen = pygame.display.set_mode((self.borad_size))
-        self.flip_botton()
-        self.white_timer = 600.0
-        self.black_timer = 600.0
-        self.wmin = 10
-        self.bmin = 10
-        self.wsec = 00
-        self.bsec = 00
+        self.defult_starting_start = True
+        self.min10_white_timer = 600.0
+        self.min10_black_timer = 600.0
+        self.min10_wmin = 10
+        self.min10_bmin = 10
+        self.min10_wsec = 00
+        self.min10_bsec = 00
+        self.min5_white_timer = 300.0
+        self.min5_black_timer = 300.0
+        self.min5_wmin = 5
+        self.min5_wsec = 00
+        self.min5_bmin = 5
+        self.min5_bsec = 00
         self.is_game_started = False
         self.setting_is_active = True
         self.sitting_on = False
@@ -38,9 +47,43 @@ class CHESSGUI:
         self.lost_by_time = False
         self.who_won_by_time = None
         self.player_is_resigning = False
-        self.resign_button()
-
-
+        self.board_change = True
+        self.time_change = False
+        self.the_index_state = 0
+        self.user_name = ''
+        my_font = pygame.font.SysFont("Arial", 30)
+        self.player_name_input = TextBox(
+            self.screen,        
+            600, 300,           
+            200, 40,           
+            font = my_font,
+            borderColour=(255, 0, 0),
+            textColour=(255, 255, 255),
+            colour=(38, 36, 33),
+            radius=15,
+            placeholderText="Enter Name..."
+        )
+        
+        self.board_change_dropdown = Dropdown(
+            self.screen, 640, 370, 100, 50, name='change board',
+            choices=["classic board","wood board"],
+            borderRadius=3, 
+            colour=pygame.Color('gray'), 
+            values=[True,False], 
+            direction='right', 
+            textHAlign='left'
+        )
+        self.game_change_time = Dropdown(
+            self.screen, 640, 430, 100, 50, name='change time',
+            choices=["10 min around","5 min around"],
+            borderRadius=3, 
+            colour=pygame.Color('gray'), 
+            values=[False,True], 
+            direction='down', 
+            textHAlign='left'
+        )
+        self.selected_value = self.board_change_dropdown.getSelected() 
+        self.selected_value = self.board_change_dropdown.getSelected() 
         self.piece_image = {
         "P":pygame.image.load("AI-CHESS/assates/Chess_plt60.png").convert_alpha(),
         "p":pygame.image.load("AI-CHESS/assates/Chess_pdt60.png").convert_alpha(),
@@ -55,13 +98,27 @@ class CHESSGUI:
         "Q":pygame.image.load("AI-CHESS/assates/Chess_qlt60.png").convert_alpha(),
         "q":pygame.image.load("AI-CHESS/assates/Chess_qdt60.png").convert_alpha()
         }
-        self.white_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-03 191504.png").convert_alpha()
-        self.black_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-09 233024.png").convert_alpha()
+        self.classic_white_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-03 191504.png").convert_alpha()
+        self.classic_black_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-09 233024.png").convert_alpha()
+        self.wood_white_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-20 145823.png").convert_alpha()
+        self.wood_black_board = pygame.image.load("AI-CHESS/assates/Screenshot 2026-10-20 145902.png").convert_alpha()
         self.highlighting = pygame.image.load("AI-CHESS/assates/RedX_(3).png").convert_alpha()
-        self.sittings_icon = pygame.image.load("AI-CHESS/assates/VirtualBox_6.1_–_vm_settings_disabled_16px_x4.png").convert_alpha()
-        pygame.transform.scale(self.sittings_icon,(10,10))
-        self.sittings_button()
+        self.left_arrow = pygame.image.load("AI-CHESS/assates/Left_Arrow_Button.png").convert_alpha()
+        self.right_arrow = pygame.image.load("AI-CHESS/assates/Right_Arrow_Button.png").convert_alpha()
 
+
+        self.sittings_icon = pygame.image.load("AI-CHESS/assates/VirtualBox_6.1_–_vm_settings_disabled_16px_x4.png").convert_alpha()
+        self.player_profiles = [pygame.image.load("AI-CHESS/assates/моё лицо на английском.jpg").convert_alpha(),
+                               pygame.image.load("AI-CHESS/assates/46 M Autistic Bored.jpg").convert_alpha(),
+                               pygame.image.load("AI-CHESS/assates/🌻.jpg").convert_alpha(),
+                               pygame.image.load("AI-CHESS/assates/just think.png").convert_alpha()
+        ]
+        self.player_profile = pygame.image.load("AI-CHESS/assates/just think.png").convert_alpha()
+        self.AI_profile = pygame.image.load("AI-CHESS/assates/Add Second Line Over First (3).png").convert_alpha()
+        pygame.transform.scale(self.sittings_icon,(10,10))
+   
+        
+       
     def white_screen_coordinates(self,square):# this is used to give the screen pos in bitboard form
 
         col = chess.square_file(square)
@@ -291,69 +348,136 @@ class CHESSGUI:
             radius=0,                      
             onClick=  lambda : self.promote_pawn(the_piece_type = 'c')
         )
+  
+
+        
     def game_timer(self,time_paused):
         if self.is_game_started == True and self.is_game_overed == False:
-            if self.legal.board.turn == chess.WHITE:
-                self.white_timer -= time_paused
-                self.wmin = int(self.white_timer) // 60
-                self.wsec = int(self.white_timer) % 60
-            elif self.legal.board.turn == chess.BLACK:
-                self.black_timer -= time_paused
-                self.bmin = int(self.black_timer) // 60
-                self.bsec = int(self.black_timer) % 60
-            self.start_time = time.perf_counter()
+            if self.time_change == False:
+                if self.legal.board.turn == chess.WHITE:
+                    self.min10_white_timer -= time_paused
+                    self.min10_wmin = int(self.min10_white_timer) // 60
+                    self.min10_wsec = int(self.min10_white_timer) % 60
+                elif self.legal.board.turn == chess.BLACK:
+                    self.min10_black_timer -= time_paused
+                    self.min10_bmin = int(self.min10_black_timer) // 60
+                    self.min10_bsec = int(self.min10_black_timer) % 60
+                self.start_time = time.perf_counter()
+            elif self.time_change == True:
+                if self.legal.board.turn == chess.WHITE:
+                    self.min5_white_timer -= time_paused
+                    self.min5_wmin = int(self.min5_white_timer) // 60
+                    self.min5_wsec = int(self.min5_white_timer) % 60
+                elif self.legal.board.turn == chess.BLACK:
+                    self.min5_black_timer -= time_paused
+                    self.min5_bmin = int(self.min5_black_timer) // 60
+                    self.min5_bsec = int(self.min5_black_timer) % 60
+                self.start_time = time.perf_counter()
+
+        
+        if self.flip_board == False:
+            if self.time_change == False:
+                font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
+                white_text_surface = font.render(f"{self.min10_wmin:02d}:{self.min10_wsec:02d}", True, (0, 0, 0)) 
+                white_text_rect = white_text_surface.get_rect()
+                white_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
+                pygame.draw.rect(self.screen,(255, 255, 255),(680,500,150,60))
+                self.screen.blit(white_text_surface,white_text_rect)
+                black_text_surface = font.render(f"{self.min10_bmin:02d}:{self.min10_bsec:02d}", True, (255, 255, 255)) 
+                black_text_rect = black_text_surface.get_rect()
+                black_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
+                pygame.draw.rect(self.screen,(38, 36, 33),(680,300,150,60))
+                self.screen.blit(black_text_surface,black_text_rect)
+            elif self.time_change == True:
+                font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
+                white_text_surface = font.render(f"{self.min5_wmin:02d}:{self.min5_wsec:02d}", True, (0, 0, 0)) 
+                white_text_rect = white_text_surface.get_rect()
+                white_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
+                pygame.draw.rect(self.screen,(255, 255, 255),(680,500,150,60))
+                self.screen.blit(white_text_surface,white_text_rect)
+                black_text_surface = font.render(f"{self.min5_bmin:02d}:{self.min5_bsec:02d}", True, (255, 255, 255)) 
+                black_text_rect = black_text_surface.get_rect()
+                black_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
+                pygame.draw.rect(self.screen,(38, 36, 33),(680,300,150,60))
+                self.screen.blit(black_text_surface,black_text_rect)
+        elif self.flip_board == True:
+            if self.time_change == False:
+                font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
+                white_text_surface = font.render(f"{self.min10_wmin:02d}:{self.min10_wsec:02d}", True, (0, 0, 0)) 
+                white_text_rect = white_text_surface.get_rect()
+                white_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
+                pygame.draw.rect(self.screen,(255, 255, 255),(680,300,150,60))
+                self.screen.blit(white_text_surface,white_text_rect)
+                black_text_surface = font.render(f"{self.min10_bmin:02d}:{self.min10_bsec:02d}", True, (255, 255, 255)) 
+                black_text_rect = black_text_surface.get_rect()
+                black_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
+                pygame.draw.rect(self.screen,(38, 36, 33),(680,500,150,60))
+                self.screen.blit(black_text_surface,black_text_rect)
+            elif self.time_change == True:
+                font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
+                white_text_surface = font.render(f"{self.min5_wmin:02d}:{self.min5_wsec:02d}", True, (0, 0, 0)) 
+                white_text_rect = white_text_surface.get_rect()
+                white_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
+                pygame.draw.rect(self.screen,(255, 255, 255),(680,300,150,60))
+                self.screen.blit(white_text_surface,white_text_rect)
+                black_text_surface = font.render(f"{self.min5_bmin:02d}:{self.min5_bsec:02d}", True, (255, 255, 255)) 
+                black_text_rect = black_text_surface.get_rect()
+                black_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
+                pygame.draw.rect(self.screen,(38, 36, 33),(680,500,150,60))
+                self.screen.blit(black_text_surface,black_text_rect)
+    def min10_fake_game_timer(self):
         if self.flip_board == False:
             font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
-            white_text_surface = font.render(f"{self.wmin:02d}:{self.wsec:02d}", True, (0, 0, 0)) 
+            white_text_surface = font.render(f"{self.min10_wmin:02d}:{self.min10_wsec:02d}", True, (0, 0, 0)) 
             white_text_rect = white_text_surface.get_rect()
             white_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
             pygame.draw.rect(self.screen,(255, 255, 255),(680,500,150,60))
             self.screen.blit(white_text_surface,white_text_rect)
-            black_text_surface = font.render(f"{self.bmin:02d}:{self.bsec:02d}", True, (255, 255, 255)) 
+            black_text_surface = font.render(f"{self.min10_bmin:02d}:{self.min10_bsec:02d}", True, (255, 255, 255)) 
             black_text_rect = black_text_surface.get_rect()
             black_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
             pygame.draw.rect(self.screen,(38, 36, 33),(680,300,150,60))
             self.screen.blit(black_text_surface,black_text_rect)
         elif self.flip_board == True:
             font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
-            white_text_surface = font.render(f"{self.wmin:02d}:{self.wsec:02d}", True, (0, 0, 0)) 
+            white_text_surface = font.render(f"{self.min10_wmin:02d}:{self.min10_wsec:02d}", True, (0, 0, 0)) 
             white_text_rect = white_text_surface.get_rect()
             white_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
             pygame.draw.rect(self.screen,(255, 255, 255),(680,300,150,60))
             self.screen.blit(white_text_surface,white_text_rect)
-            black_text_surface = font.render(f"{self.bmin:02d}:{self.bsec:02d}", True, (255, 255, 255)) 
+            black_text_surface = font.render(f"{self.min10_bmin:02d}:{self.min10_bsec:02d}", True, (255, 255, 255)) 
             black_text_rect = black_text_surface.get_rect()
             black_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
             pygame.draw.rect(self.screen,(38, 36, 33),(680,500,150,60))
             self.screen.blit(black_text_surface,black_text_rect)
-    def fake_game_timer(self):
+    def min5_fake_game_timer(self):
         if self.flip_board == False:
             font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
-            white_text_surface = font.render(f"{self.wmin:02d}:{self.wsec:02d}", True, (0, 0, 0)) 
+            white_text_surface = font.render(f"{self.min5_wmin:02d}:{self.min5_wsec:02d}", True, (0, 0, 0)) 
             white_text_rect = white_text_surface.get_rect()
             white_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
             pygame.draw.rect(self.screen,(255, 255, 255),(680,500,150,60))
             self.screen.blit(white_text_surface,white_text_rect)
-            black_text_surface = font.render(f"{self.bmin:02d}:{self.bsec:02d}", True, (255, 255, 255)) 
+            black_text_surface = font.render(f"{self.min5_bmin:02d}:{self.min5_bsec:02d}", True, (255, 255, 255)) 
             black_text_rect = black_text_surface.get_rect()
             black_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
             pygame.draw.rect(self.screen,(38, 36, 33),(680,300,150,60))
             self.screen.blit(black_text_surface,black_text_rect)
         elif self.flip_board == True:
             font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
-            white_text_surface = font.render(f"{self.wmin:02d}:{self.wsec:02d}", True, (0, 0, 0)) 
+            white_text_surface = font.render(f"{self.min5_wmin:02d}:{self.min5_wsec:02d}", True, (0, 0, 0)) 
             white_text_rect = white_text_surface.get_rect()
             white_text_rect.center = (680 + 150 // 2, 300 + 60 // 2)
             pygame.draw.rect(self.screen,(255, 255, 255),(680,300,150,60))
             self.screen.blit(white_text_surface,white_text_rect)
-            black_text_surface = font.render(f"{self.bmin:02d}:{self.bsec:02d}", True, (255, 255, 255)) 
+            black_text_surface = font.render(f"{self.min5_bmin:02d}:{self.min5_bsec:02d}", True, (255, 255, 255)) 
             black_text_rect = black_text_surface.get_rect()
             black_text_rect.center = (680 + 150 // 2, 500 + 60 // 2)
             pygame.draw.rect(self.screen,(38, 36, 33),(680,500,150,60))
             self.screen.blit(black_text_surface,black_text_rect)
     
     def the_game_is_on(self):
-        if self.is_game_started == False and self.is_game_overed == False:
+        if self.is_game_started == False and self.is_game_overed == False and self.defult_starting_start == False:
             pygame.draw.rect(self.screen,(0, 0, 0),(159,220,320,200))
             font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
             
@@ -375,7 +499,7 @@ class CHESSGUI:
         self.start_time = time.perf_counter()
         self.play_game.hide()
     def sittings_button(self):
-        if self.is_game_started == False:
+        if self.is_game_started == False and self.defult_starting_start == False:
             self.setting = Button(
                 self.screen, 878, 10, 70, 70, 
                 text='',
@@ -386,12 +510,22 @@ class CHESSGUI:
                 radius=0,                      
                 onClick=  self.sitting_is_active
             )
+    def sitting_panal(self):
+        if self.sitting_on == True:
+            pygame.draw.rect(self.screen,(38, 36, 33),(600,300,320,300)) 
+            font = pygame.font.SysFont("Arial", 36, bold=True, italic=False)
+            sitting_text_surface = font.render(f"BOARD SITTINGS", True, (255, 255, 255)) 
+            self.screen.blit(sitting_text_surface,(600,300))
+            self.board_change_dropdown.show()
+            self.game_change_time.show()
+        
+    def off_sittinga(self):
+        if self.sitting_on == False:
+            self.board_change_dropdown.hide()
+            self.game_change_time.hide()
     def sitting_is_active(self):
         if self.is_game_started == False:
             self.sitting_on = not self.sitting_on
-    def sitting_panal(self):
-        if self.sitting_on == True:
-            pygame.draw.rect(self.screen,(38, 36, 33),(300,300,320,300)) 
     def game_over(self):
         if self.is_game_overed == True and self.lost_by_time == False and self.player_is_resigning == False:
             game_result = self.legal.board.outcome()
@@ -548,15 +682,139 @@ class CHESSGUI:
         self.is_game_overed =  False
         self.is_game_started = False
         self.player_is_resigning = False
-        self.white_timer = 600.0
-        self.black_timer = 600.0
-        self.wmin = 10
-        self.bmin = 10
-        self.wsec = 00
-        self.bsec = 00
+        if self.time_change == False:
+            self.min10_white_timer = 600.0
+            self.min10_black_timer = 600.0
+            self.min10_wmin = 10
+            self.min10_bmin = 10
+            self.min10_wsec = 00
+            self.min10_bsec = 00
+        elif self.time_change == True:
+            self.min5_white_timer = 300.0
+            self.min5_black_timer = 300.0
+            self.min5_wmin = 5
+            self.min5_bmin = 5
+            self.min5_wsec = 00
+            self.min5_bsec = 00
         self.resit.hide()
+    #def name_enter(self):
+    def players_info(self):
+        self.user_name = self.player_name_input.getText()
+        font = pygame.font.SysFont("Arial", 25, bold=True, italic=False)
+        if self.user_name == "":
+            player_name = font.render("defult",True,(255,255,255))
+        else:
+            player_name = font.render(self.user_name,True,(255,255,255))
+        profile_size = pygame.transform.scale(self.player_profiles[self.the_index_state],(65,65))
+        self.screen.blit(profile_size,(660,580))
+        self.screen.blit(player_name,(730,580))
 
+        AI_name = font.render("JUST PLAY",True,(255,255,255))
+        AI_profile_size = pygame.transform.scale(self.AI_profile,(65,65))
+        self.screen.blit(AI_profile_size,(660,220))
+        self.screen.blit(AI_name,(730,220))
+    def chess_moves_slidbar(self):
+        move_history = self.legal.temp_san_board()
+        turn_pairs = []
+        for i in range(0, len(move_history), 2):
+            turn_num = (i // 2) + 1
+            w_move = move_history[i]
+            b_move = move_history[i + 1] if i + 1 < len(move_history) else ""
+            turn_pairs.append((turn_num, w_move, b_move))
+
+
+        visible_turns = turn_pairs[-8:]
+
+
+        font = pygame.font.SysFont("Arial", 35, bold=True, italic=False)
+        for index, (turn_num, w_move, b_move) in enumerate(visible_turns):
+            row_text = f'{turn_num})'
+            W_move_text = f"{w_move}"
+            B_move_text = f"{b_move}"
+
+            row_surface = font.render(row_text, True, (255, 255, 255))
+            W_surface = font.render(W_move_text, True, (255, 255, 255))
+            B_surface = font.render(B_move_text, True, (255, 255, 255))
+            
+            row_current_x = 80 + (index * 100)
+            W_current_x = 80 + (index * 100)
+            B_current_x = 80 + (index * 100)
+            self.screen.blit(row_surface, (row_current_x, 680))
+            self.screen.blit(W_surface, (W_current_x, 720))
+            self.screen.blit(B_surface, (B_current_x, 800))
+       
+
+    def chess_slidbar(self):
+        pygame.draw.rect(self.screen,(255, 255, 255),(10,700,50,75))
+        pygame.draw.rect(self.screen,(38, 36, 33),(10,775,50,75))
+        pygame.draw.line(self.screen, (0,0,0), (10,775), (840,775), 5)
+        font = pygame.font.SysFont("Arial", 35, bold=True, italic=False)
+        W_text_surface = font.render("W", True, (0, 0, 0))
+        self.screen.blit(W_text_surface, (20,720))
+        B_text_surface = font.render("B", True, (255, 255, 255))
+        self.screen.blit(B_text_surface, (23,790))
+    def chess_starting_menu(self):
+        if self.defult_starting_start == True:
+            pygame.draw.rect(self.screen,(38, 36, 33),(0,0,940,940))
+            font = pygame.font.SysFont("Arial", 35, bold=True, italic=False)
+            self.select = Button(
+                self.screen, 400, 600, 500, 70,
+                text="SELECTED",
+                font = font,
+                textColour = (255,255,255),
+                fontSize=30,
+                inactiveColour=(50, 205, 50),
+                hoverColour=(0, 128, 0),
+                pressedColour=(0, 200, 20),
+                radius=0,
+                onClick=  self.go_to_starting_menu
+            )
+
+
+
+    def selecte_imges(self):
+        if self.defult_starting_start == True:
+            self.the_index_state = self.the_index_state % len(self.player_profiles)
+            the_index = self.player_profiles[self.the_index_state]
+            resized_img =  pygame.transform.scale(the_index,(500,500))
+            self.screen.blit(resized_img,(50,20))
+    def change_the_index_right(self):
+        self.the_index_state += 1
+        self.selecte_imges()
+    def change_the_index_left(self):
+        self.the_index_state -= 1
+        self.selecte_imges()
+    def img_changing_buttons(self):
+        if self.defult_starting_start == True:
+            resize_left_arrow = pygame.transform.scale(self.left_arrow,(50,50))
+            resize_right_arrow = pygame.transform.scale(self.right_arrow,(50,50))
+            pygame.transform.scale(self.right_arrow,(10,10))
+            self.right_move = Button(
+                self.screen, 50, 530, 40, 40,
+                image=resize_left_arrow,
+                inactiveColour=(48, 46, 43),  
+                hoverColour=(125, 125, 125),     
+                pressedColour=(0, 200, 20), 
+                radius=25,
+                onClick=  lambda:self.change_the_index_right()
+            )
+            self.left_move = Button(
+                self.screen, 500, 530, 40, 40,
+                image=resize_right_arrow,
+                inactiveColour=(48, 46, 43),  
+                hoverColour=(125, 125, 125),     
+                pressedColour=(0, 200, 20),          
+                radius=25,
+                onClick= lambda:self.change_the_index_left()
+            )
+    def go_to_starting_menu(self):
+        self.defult_starting_start = not self.defult_starting_start
+        self.select.hide()
+        self.right_move.hide()
+        self.left_move.hide()
+        self.player_name_input.hide()
         
+
 
     def chessgui(self):# this is where the chess GUI starts
         while self.running:
@@ -565,23 +823,38 @@ class CHESSGUI:
             if game_over is True:
                 self.is_game_overed = True
                 self.is_game_started = False
-
-            elif self.white_timer <= 0:
-                self.who_won_by_time = 'BLACK'
-                self.is_game_overed = True
-                self.lost_by_time = True
-                self.is_game_started = False
-            elif self.black_timer <= 0:
-                self.who_won_by_time = 'WHITE'
-                self.lost_by_time = True
-                self.is_game_overed = True
-                
-                self.is_game_started = False
+            if self.time_change == False:
+                if self.min10_white_timer <= 0:
+                    self.who_won_by_time = 'BLACK'
+                    self.is_game_overed = True
+                    self.lost_by_time = True
+                    self.is_game_started = False
+                elif self.min10_black_timer <= 0:
+                    self.who_won_by_time = 'WHITE'
+                    self.lost_by_time = True
+                    self.is_game_overed = True
+                    self.is_game_started = False
+            if self.time_change == True:
+                if self.min5_white_timer <= 0:
+                    self.who_won_by_time = 'BLACK'
+                    self.is_game_overed = True
+                    self.lost_by_time = True
+                    self.is_game_started = False
+                elif self.min5_black_timer <= 0:
+                    self.who_won_by_time = 'WHITE'
+                    self.lost_by_time = True
+                    self.is_game_overed = True
+                    self.is_game_started = False
 
             # this handal the window events
-            for event in pygame.event.get():
+            events = pygame.event.get()
+            for event in events:
                 if event.type == pygame.QUIT:#quiting the game
                     self.running = False
+                if event.type == pygame.KEYDOWN:
+                    self.user_name += event.unicode
+
+                
                 if self.is_game_started == True:
                     if event.type == pygame.MOUSEBUTTONDOWN:#check on the screen
                         mx, my = event.pos #gets the screen coods
@@ -595,19 +868,32 @@ class CHESSGUI:
                 
             #this fills the windows background
             self.screen.fill((48, 46, 43))
-            self.filp_the_board.show()
+            if self.defult_starting_start == False:
+                self.sittings_button()
+                self.flip_botton()
+                self.resign_button()
+                self.players_info()
+                self.chess_moves_slidbar()
+                self.chess_slidbar()
             if self.is_game_started == True:
+                #self.changing_time_set()
                 current = time.perf_counter()
                 elapsed = current - self.start_time
                 self.game_timer(elapsed)
-            else:
-                self.fake_game_timer()
-            
-            self.sittings_button
+            elif self.is_game_started == False and self.time_change == False:
+                self.min10_fake_game_timer()
+                
+            elif self.is_game_started == False and self.time_change == True:
+                self.min5_fake_game_timer()
+
 
 
             if self.flip_board == False:
-                resized_white_board = pygame.transform.scale(self.white_board,(640,640))
+                if self.board_change == True:
+                    resized_white_board = pygame.transform.scale(self.classic_white_board,(640,640))
+                elif self.board_change == False:
+                    resized_white_board = pygame.transform.scale(self.wood_white_board,(640,640))
+
                 self.screen.blit(resized_white_board,(0,0))
                 self.the_game_is_on()
                 for square in range(64):
@@ -633,7 +919,11 @@ class CHESSGUI:
 
 
             elif self.flip_board == True:
-                resized_black_board = pygame.transform.scale(self.black_board,(640,640))
+                if self.board_change == True:
+                    resized_black_board = pygame.transform.scale(self.classic_black_board,(640,640))
+                elif self.board_change == False:
+                    resized_black_board = pygame.transform.scale(self.wood_black_board,(640,640))
+
                 self.screen.blit(resized_black_board,(0,0))
                 self.the_game_is_on()
                 for square in range(64):
@@ -656,17 +946,22 @@ class CHESSGUI:
                 self.game_over()
                 self.palyer_wants_to_resign()
                 self.game_over()
-
-
-            pygame_widgets.update(event) 
-            #if self.sitting_on == True:
-            #    pygame.draw.rect(self.screen,(38, 36, 33),(300,300,320,300))
-            
+            self.chess_starting_menu()
+            self.img_changing_buttons()
+            self.off_sittinga()
             self.sitting_panal()
-           
+            self.selecte_imges()
+            pygame_widgets.update(events) 
+            self.board_change = self.board_change_dropdown.getSelected() 
+            self.time_change = self.game_change_time.getSelected() 
+            self.player_name_input.draw()
+        
             pygame.display.flip()
             self.clock.tick(60)
 
 if __name__ == "__main__":
     chessboard = CHESSGUI()
     chessboard.chessgui()
+
+
+
