@@ -1,4 +1,6 @@
 import chess
+import torch
+import numpy as np
 class chessmoves:
     def __init__(self):
         self.board = chess.Board()
@@ -16,8 +18,13 @@ class chessmoves:
             san_moves.append(temp_board.san(move))
             temp_board.push(move)
         return san_moves
-    def simulate_move(self):
-        pass
+    def simulate_move(self,move):
+        fack_board = self.board.copy()
+        fack_board.push(move)
+
+        fack_wapper = chessmoves()
+        fack_wapper.board = fack_board
+        return fack_wapper
     def is_terminal(self):
         is_terminal = self.board.is_game_over()
         return is_terminal
@@ -32,7 +39,20 @@ class chessmoves:
             else:
                 return 0
     def to_tensor(self):
-        pass
+        board3d = np.zeros((19,8,8), dtype=np.int8)
+        for piece_type in chess.PIECE_TYPES:
+            for square in self.board.pieces(piece_type, chess.WHITE):
+                idx = np.unravel_index(square, (8, 8))
+                board3d[piece_type - 1][7 - idx[0]][idx[1]] = 1
+            for square in self.board.pieces(piece_type, chess.BLACK):
+                idx = np.unravel_index(square, (8, 8))
+                board3d[piece_type + 5][7 - idx[0]][idx[1]] = 1
+        if self.board.turn == chess.WHITE:
+            board3d[12, :, :] = 1
+        else:
+            board3d[13, :, :] = 1
+        
+        return torch.tensor(board3d, dtype=torch.float32)
 if __name__ == "__main__":
     test_board = chessmoves()
     print("Board initialized successfully!")

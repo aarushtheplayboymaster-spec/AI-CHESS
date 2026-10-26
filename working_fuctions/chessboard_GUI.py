@@ -1,11 +1,13 @@
 import chess
 import pygame
-from chessboard import chessmoves
+from .MCTS_or_PUST_engine import PUCT
+from .chessboard import chessmoves
 import pygame_widgets
 from pygame_widgets.button import Button 
 from pygame_widgets.dropdown import Dropdown
 from pygame_widgets.textbox import TextBox
 import time
+import threading
 class CHESSGUI:
     def __init__(self):
         pygame.init()
@@ -18,12 +20,13 @@ class CHESSGUI:
         self.square_size = 80
         self.offset = 5
         self.legal = chessmoves()
-      
+        self.player_moved = False
         self.selected = None
-        self.turn = True
         self.show_sittings = False
         self.flip_board = False
         self.running = True
+        self.ai_thinking = False
+        self.ai_process = None
         self.pawn_promotion = False
         self.pending_move = None
         self.screen = pygame.display.set_mode((self.borad_size))
@@ -115,6 +118,7 @@ class CHESSGUI:
         ]
         self.player_profile = pygame.image.load("AI-CHESS/assates/just think.png").convert_alpha()
         self.AI_profile = pygame.image.load("AI-CHESS/assates/Add Second Line Over First (3).png").convert_alpha()
+        self.AI_think = pygame.image.load("AI-CHESS/assates/—Pngtree—bulb icon vector bulb ideas_4979106.png").convert_alpha()
         pygame.transform.scale(self.sittings_icon,(10,10))
    
         
@@ -188,9 +192,11 @@ class CHESSGUI:
                         self.pending_move = fro_squre + to_squre # combines them to send them to (self.legal.chess_legal_moves(get_uni_move)) fuction which moves that piece 
                     else:
                         get_uni_move = fro_squre + to_squre 
-                        self.legal.chess_legal_moves(get_uni_move)
+                        click = self.legal.chess_legal_moves(get_uni_move)
+                        if click is not None:
+                            self.player_moved = True
+
                 self.selected = None #resets the value for next piece move
-            
         elif self.flip_board == True:
             checked_square = self.black_move_from(mx,my)
 
@@ -219,10 +225,11 @@ class CHESSGUI:
                         self.pending_move = fro_squre + to_squre # combines them to send them to (self.legal.chess_legal_moves(get_uni_move)) fuction which moves that piece 
                     else: 
                         get_uni_move = fro_squre + to_squre # combines them to send them to (self.legal.chess_legal_moves(get_uni_move)) fuction which moves that piece 
-                        self.legal.chess_legal_moves(get_uni_move)
+                        click = self.legal.chess_legal_moves(get_uni_move)
+                        if click is not None:
+                            self.player_moved = True
 
-                    self.selected = None #resets the value for next piece move
-    
+                self.selected = None #resets the value for next piece move
     
     
     def white_highlight(self,square):#used for highlighting the legal moves of the piese you select
@@ -242,17 +249,33 @@ class CHESSGUI:
 
         return x_coordinates,y_coordinates#returns x and y coods for highlighting  of  pieces legal move placement t 
 
-    def chess_engine(self):
-        if self.turn == False:
-            checked_square = 47
-            selected = 55
-            fro_squre = chess.square_name(selected)
-            to_squre = chess.square_name(checked_square)
-            if fro_squre != to_squre:
-                get_uni_move = fro_squre + to_squre
-                self.legal.chess_legal_moves(get_uni_move)
-                self.turn = True
-    def flip_botton(self):
+    def chess_engine(self):#the chess_engine takes the best moves from PUC and play them
+        if self.flip_board == False and self.legal.board.turn == chess.BLACK:#plays second 
+            root = PUCT(board=self.legal)#gives the live board state to the PUCT and neural network
+           
+            best_move = root.puct_search()
+
+            if best_move and best_move in self.legal.board.legal_moves:
+                self.legal.board.push(best_move)
+            self.ai_thinking = False#so it can have time to think
+            self.player_moved = False#so it knows when to play
+        elif self.flip_board == True and self.legal.board.turn == chess.WHITE:#plays first
+        
+            root = PUCT(board=self.legal)#gives the live board state to the PUCT and neural network
+           
+            best_move = root.puct_search()
+
+            if best_move and best_move in self.legal.board.legal_moves:
+                self.legal.board.push(best_move)
+            self.ai_thinking = False#so it can have time to think
+            self.player_moved = False#so it knows when to play
+
+
+
+
+    
+
+    def flip_botton(self):#it is a button fuction used in pygame_widgets.button  and when press ables me to pick a side
         self.filp_the_board = Button(
             self.screen, 670, 10, 30, 30, 
             text='',
@@ -263,7 +286,7 @@ class CHESSGUI:
             radius=25,
             onClick= self.fliping_board
         )
-    def resign_button(self):
+    def resign_button(self):#so the player can resign from the game
         self.resign_the_game = Button(
             self.screen, 670, 50, 50, 50, 
             text='',
@@ -274,19 +297,21 @@ class CHESSGUI:
             radius=25,
             onClick= self.resigning
         )
-    def resigning(self):
+    def resigning(self):#changes the resigning bool when resign button pressed
         if self.is_game_started == True:
             self.player_is_resigning = not self.player_is_resigning
             self.is_game_overed = True
 
 
-    def fliping_board(self):
+    def fliping_board(self):#changes the filping bool when resign button pressed
         if self.is_game_started == False:
             self.flip_board = not self.flip_board
+            self.player_moved = not self.player_moved
 
-    def showing_sittings(self):
+    def showing_sittings(self):#changes the settings bool 
         self.show_sittings = not self.show_sittings
-    def promote_pawn(self,the_piece_type):
+
+    def promote_pawn(self,the_piece_type):#able the pawns to be promote
         if the_piece_type != 'c':
             self.legal.chess_legal_moves(self.pending_move + the_piece_type)
         self.pawn_promotion = False
@@ -297,7 +322,7 @@ class CHESSGUI:
         self.Rook_promotion.hide()
         self.close_buttons.hide()
         
-    def pawn_promotion_botton(self,mx,my):
+    def pawn_promotion_botton(self,mx,my):#option which show up when you promote the pawns
         self.Queen_promotion = Button(
             self.screen, mx, (my), 60, 60, 
             text='',
@@ -682,6 +707,9 @@ class CHESSGUI:
         self.is_game_overed =  False
         self.is_game_started = False
         self.player_is_resigning = False
+        if self.ai_thinking == True:
+            self.ai_thinking == False
+        self.player_moved = False
         if self.time_change == False:
             self.min10_white_timer = 600.0
             self.min10_black_timer = 600.0
@@ -712,6 +740,9 @@ class CHESSGUI:
         AI_name = font.render("JUST PLAY",True,(255,255,255))
         AI_profile_size = pygame.transform.scale(self.AI_profile,(65,65))
         self.screen.blit(AI_profile_size,(660,220))
+        if self.ai_thinking == True:
+            AI_thinking = pygame.transform.scale(self.AI_think,(65,65))
+            self.screen.blit(AI_thinking,(660,160))
         self.screen.blit(AI_name,(730,220))
     def chess_moves_slidbar(self):
         move_history = self.legal.temp_san_board()
@@ -855,17 +886,22 @@ class CHESSGUI:
                     self.user_name += event.unicode
 
                 
-                if self.is_game_started == True:
+                if self.is_game_started == True and self.ai_thinking != True:
                     if event.type == pygame.MOUSEBUTTONDOWN:#check on the screen
                         mx, my = event.pos #gets the screen coods
                         if self.pawn_promotion and self.pending_move is not None:
                             pass
                         else:
-                            if mx < 640 and my < 640: #sees of the check was inside of the board 
-                                self.handal_checkes(mx,my)#give the coods to handal_checkes() to move a piece 
+                            if mx < 640 and my < 640: #sees of the check was inside of the board
+                                self.handal_checkes(mx,my)#give the coods to handal_checkes() to move a piece
                                 if self.pawn_promotion == True and self.pending_move is not None:
                                     self.pawn_promotion_botton(mx,my)
-                
+            if self.is_game_started == True and self.player_moved == True and not self.ai_thinking:
+                self.ai_thinking = True
+                self.ai_thread = threading.Thread(target= self.chess_engine)
+                self.ai_thread.daemon = True
+                self.ai_thread.start()
+
             #this fills the windows background
             self.screen.fill((48, 46, 43))
             if self.defult_starting_start == False:
@@ -882,7 +918,7 @@ class CHESSGUI:
                 self.game_timer(elapsed)
             elif self.is_game_started == False and self.time_change == False:
                 self.min10_fake_game_timer()
-                
+
             elif self.is_game_started == False and self.time_change == True:
                 self.min5_fake_game_timer()
 
@@ -958,10 +994,4 @@ class CHESSGUI:
         
             pygame.display.flip()
             self.clock.tick(60)
-
-if __name__ == "__main__":
-    chessboard = CHESSGUI()
-    chessboard.chessgui()
-
-
 
